@@ -15,40 +15,45 @@ datasource db {
 
 }
 
-model RawScrape {
-  id          String   @id @default(uuid())
-  source      Source   
-  externalId  String   @unique 
-  rawContent  Json     
-  status      Status   @default(PENDING) 
-  createdAt   DateTime @default(now())
-  processed   ProcessedInsight?
-
-  @@index([source, status])
-}
-
-model ProcessedInsight {
-  id             String    @id @default(uuid())
-  rawScrapeId    String    @unique
-  rawScrape      RawScrape @relation(fields: [rawScrapeId], references: [id], onDelete: Cascade)
-  
-  title          String
-  summary        String    @db.Text
-  keyPoints      Json      
-  relevanceScore Int       
-  sourceUrl      String?     
-  createdAt      DateTime  @default(now())
-}
-enum Source {
+enum DataSource {
   REDDIT
   YOUTUBE
-  SUBSTACK
   BLOG
 }
 
-enum Status {
-  PENDING
+enum DataStatus {
+  UNPROCESSED
   PROCESSING
-  COMPLETED
+  PROCESSED
   FAILED
+}
+
+model SearchQuery {
+  id          String   @id @default(uuid())
+  query       String   @unique  // for deduplication/cache lookup
+  createdAt   DateTime @default(now())
+
+  rawData     RawData[]
+  result      ProcessedResult?
+}
+
+model RawData {
+  id          String     @id @default(uuid())
+  queryId     String
+  source      DataSource
+  status      DataStatus @default(UNPROCESSED)
+  payload     Json
+  createdAt   DateTime   @default(now())
+
+  query       SearchQuery @relation(fields: [queryId], references: [id])
+}
+
+model ProcessedResult {
+  id          String      @id @default(uuid())
+  queryId     String      @unique
+  summary     String      // Groq's filtered/summarized output
+  rawOutput   Json?       // full Groq response if needed
+  createdAt   DateTime    @default(now())
+
+  query       SearchQuery @relation(fields: [queryId], references: [id])
 }
