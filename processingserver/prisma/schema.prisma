@@ -15,7 +15,40 @@ datasource db {
 
 }
 
-model User {
-  id        String   @id @default(uuid())
-  name      String
+model RawScrape {
+  id          String   @id @default(uuid())
+  source      Source   
+  externalId  String   @unique 
+  rawContent  Json     
+  status      Status   @default(PENDING) 
+  createdAt   DateTime @default(now())
+  processed   ProcessedInsight?
+
+  @@index([source, status])
+}
+
+model ProcessedInsight {
+  id             String    @id @default(uuid())
+  rawScrapeId    String    @unique
+  rawScrape      RawScrape @relation(fields: [rawScrapeId], references: [id], onDelete: Cascade)
+  
+  title          String
+  summary        String    @db.Text
+  keyPoints      Json      
+  relevanceScore Int       
+  sourceUrl      String?     
+  createdAt      DateTime  @default(now())
+}
+enum Source {
+  REDDIT
+  YOUTUBE
+  SUBSTACK
+  BLOG
+}
+
+enum Status {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
 }
